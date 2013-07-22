@@ -18,9 +18,9 @@ if [ $DIF -gt 10 ] || [ $DIF -eq 0 ]; then	# if eq 0 then this is first use
 
   while [ "$PIDS" != "" ]			# had an issue with multiple copies of the FE running
     do
-	  PIDS=$(pidof mythfrontend)		# check to see if MFE is running
 	  pkill mythfrontend			# Kill it
 	  sleep 5				# wait 5 seconds
+	  PIDS=$(pidof mythfrontend)		# check to see if MFE is running
     done
 
   mythfrontend
