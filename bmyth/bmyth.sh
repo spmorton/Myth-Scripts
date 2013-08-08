@@ -23,7 +23,7 @@ if [ $DIF -gt 10 ] || [ $DIF -eq 0 ]; then	# if eq 0 then this is first use
 	  PIDS=$(pidof mythfrontend)		# check to see if MFE is running
     done
 
-  mythfrontend
+  mythfrontend &
 
 fi
 
