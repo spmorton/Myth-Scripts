@@ -128,6 +128,8 @@ class VIDEO:
             self.vid.filename = self.process_fmt(TVFMT)
         elif self.type == 'MOVIE':
             self.vid.filename = self.process_fmt(MVFMT)
+        
+        self.vid.markup._refdat = (self.vid.filename,)
 
     def get_meta(self):
         metadata = self.rec.exportMetadata()
@@ -286,7 +288,20 @@ def main():
     elif len(args) == 1:
         try:
             export = VIDEO(opts,int(args[0]))
-            
+            export.get_type()
+            export.get_dest()
+            if (export.dup_check):
+                sys.exit(0)
+            else:
+                export.copy()
+            if opts.seekdata:
+                export.copy_seek()
+            if opts.skiplist:
+                export.copy_markup(static.MARKUP.MARK_COMM_START,
+                                 static.MARKUP.MARK_COMM_END)
+            if opts.cutlist:
+                export.copy_markup(static.MARKUP.MARK_CUT_START,
+                                 static.MARKUP.MARK_CUT_END)                
         except Exception, e:
             Job(int(args[0])).update({'status':Job.ERRORED,
                                       'comment':'ERROR: '+e.args[0]})
