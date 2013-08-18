@@ -6,7 +6,8 @@
 #   Author: Scott Morton
 # 
 #   This is a rewrite of a script by Raymond Wagner
-#   The objective is to clean it up and streamline the code for use with Myth 26
+#   The objective is to clean it up and streamline 
+#   the code for use with Myth 26
 
 
 #   Migrates MythTV Recordings to MythVideo in Version .26.
@@ -15,18 +16,12 @@
 
 __title__  = "Myth-Rec-to-Vid"
 __author__ = "Scott Morton"
-__version__= "v0.1"
+__version__= "v0.9"
 
-from MythTV import MythDB, Job, Recorded, Video, VideoGrabber,\
-                   MythLog, MythError, static, MythBE
+from MythTV import MythDB, Job, Recorded, Video, MythLog, MythError, static, MythBE
 from optparse import OptionParser, OptionGroup
-from socket import gethostname
 
-#import os
-#import re
 import sys, time, hashlib
-#import time
-#import hashlib
 
 # Global Constants
 
@@ -78,11 +73,6 @@ class VIDEO:
 
         self.db = MythDB()
         self.log = MythLog(module='Myth-Rec-to-Vid.py', db=self.db)
-
-
-        self.log(MythLog.GENERAL, MythLog.INFO, 'attribute format ',
-                    '%s - %s' % (self.chanID, self.startTime))
-
 
         # Capture the backend host name
         self.host = self.db.gethostname()
