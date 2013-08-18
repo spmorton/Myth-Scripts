@@ -1,4 +1,3 @@
- 
 #!/bin/sh
 # written by scott Morton 7/14/2013
 # bmyth.sh is Bounce MYTH FE for those nasty occasions when it locks up.
