@@ -110,18 +110,19 @@ class VIDEO:
                     '%s - %s' % (self.rec.title.encode('utf-8'), 
                                  self.rec.subtitle.encode('utf-8')))
         if bend.fileExists(self.vid.filename, 'Videos'):
-          self.log(MythLog.GENERAL, MythLog.INFO, 'Recording already exists in Myth Videos')
-          self.job.setComment("Action would result in duplicate entry, job ended" )
-          self.job.setStatus(Job.FINISHED)
-          self.vid.delete()
-          self.log(MythLog.GENERAL, MythLog.INFO, 'Exiting program')
-          sys.exit(0)
+            self.log(MythLog.GENERAL, MythLog.INFO, 'Recording already exists in Myth Videos')
+            self.job.setComment("Action would result in duplicate entry, job ended" )
+            self.job.setStatus(Job.FINISHED)
+            self.vid.delete()
+            self.log(MythLog.GENERAL, MythLog.INFO, 'Exiting program')
+            return True
           
         else:
             self.log(MythLog.GENERAL, MythLog.INFO, 'No duplication found for ',
                     '%s - %s' % (self.rec.title.encode('utf-8'), 
                                  self.rec.subtitle.encode('utf-8')))
-    
+            return False 
+
     def get_dest(self):
         if self.type == 'TV':
             self.vid.filename = self.process_fmt(TVFMT)
@@ -231,3 +232,69 @@ class VIDEO:
                 self.job.setComment("Complete - %d seconds elapsed" % \
             	      (int(time.time()-stime)))
                 self.job.setStatus(Job.FINISHED)
+
+
+
+
+def main():
+    parser = OptionParser(usage="usage: %prog [options] [jobid]")
+
+    sourcegroup = OptionGroup(parser, "Source Definition",
+                    "These options can be used to manually specify a recording to operate on "+\
+                    "in place of the job id.")
+    sourcegroup.add_option("--chanid", action="store", type="int", dest="chanid",
+            help="Use chanid for manual operation")
+    sourcegroup.add_option("--starttime", action="store", type="int", dest="starttime",
+            help="Use starttime for manual operation")
+    parser.add_option_group(sourcegroup)
+
+    actiongroup = OptionGroup(parser, "Additional Actions",
+                    "These options perform additional actions after the recording has been exported.")
+    actiongroup.add_option('--safe', action='store_true', default=False, dest='safe',
+            help='Perform quick sanity check of exported file using file size.')
+    actiongroup.add_option('--really-safe', action='store_true', default=False, dest='reallysafe',
+            help='Perform slow sanity check of exported file using SHA1 hash.')
+    actiongroup.add_option("--delete", action="store_true", default=False,
+            help="Delete source recording after successful export. Enforces use of --safe.")
+    parser.add_option_group(actiongroup)
+
+    othergroup = OptionGroup(parser, "Other Data",
+                    "These options copy additional information from the source recording.")
+    othergroup.add_option("--seekdata", action="store_true", default=False, dest="seekdata",
+            help="Copy seekdata from source recording.")
+    othergroup.add_option("--skiplist", action="store_true", default=False, dest="skiplist",
+            help="Copy commercial detection from source recording.")
+    othergroup.add_option("--cutlist", action="store_true", default=False, dest="cutlist",
+            help="Copy manual commercial cuts from source recording.")
+    parser.add_option_group(othergroup)
+
+    MythLog.loadOptParse(parser)
+
+    opts, args = parser.parse_args()
+
+    if opts.verbose:
+        if opts.verbose == 'help':
+            print MythLog.helptext
+            sys.exit(0)
+        MythLog._setlevel(opts.verbose)
+
+    if opts.delete:
+        opts.safe = True
+
+    if opts.chanid and opts.starttime:
+        export = VIDEO(opts)
+    elif len(args) == 1:
+        try:
+            export = VIDEO(opts,int(args[0]))
+            
+        except Exception, e:
+            Job(int(args[0])).update({'status':Job.ERRORED,
+                                      'comment':'ERROR: '+e.args[0]})
+            MythLog(module='mythvidexport.py').logTB(MythLog.GENERAL)
+            sys.exit(1)
+    else:
+        parser.print_help()
+        sys.exit(2)
+
+if __name__ == "__main__":
+    main()
