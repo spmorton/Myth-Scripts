@@ -9,7 +9,7 @@
 #   The objective is to clean it up and streamline the code for use with Myth 26
 
 
-#   Converts MythTV Recordings to MythVideo in Version .26.
+#   Migrates MythTV Recordings to MythVideo in Version .26.
 #---------------------------
 
 
@@ -70,24 +70,25 @@ class VIDEO:
             
         # If no job ID given, must be a command line run
         else:
+            self.thisJob = jobid
             self.chanID = opts.chanid
-            self.startTime = opts.starttime
+            self.startTime = opts.startdate + " " + opts.starttime + opts.offset
 
-        #self.opts = opts
+        self.opts = opts
 
+        self.db = MythDB()
+        self.log = MythLog(module='Myth-Rec-to-Vid.py', db=self.db)
+
+
+        self.log(MythLog.GENERAL, MythLog.INFO, 'attribute format ',
+                    '%s - %s' % (self.chanID, self.startTime))
 
 
         # Capture the backend host name
         self.host = self.db.gethostname()
 
-        
-        self.db = MythDB()
-        self.log = MythLog(module='Myth-Rec-to-Vid.py', db=self.db)
-
- 
-
         # prep objects
-        self.rec = Recorded((self.chanid,self.starttime), db=self.db)
+        self.rec = Recorded((self.chanID,self.startTime), db=self.db)
         self.log(MythLog.GENERAL, MythLog.INFO, 'Using recording',
                         '%s - %s' % (self.rec.title.encode('utf-8'), 
                                      self.rec.subtitle.encode('utf-8')))
@@ -106,13 +107,16 @@ class VIDEO:
                 
     def dup_check(self):
         bend = MythBE(db=self.vid._db)
+        self.log(MythLog.GENERAL, MythLog.INFO, 'Processing new file name ',
+                    '%s' % (self.vid.filename))
         self.log(MythLog.GENERAL, MythLog.INFO, 'Checking for duplication of ',
                     '%s - %s' % (self.rec.title.encode('utf-8'), 
                                  self.rec.subtitle.encode('utf-8')))
         if bend.fileExists(self.vid.filename, 'Videos'):
             self.log(MythLog.GENERAL, MythLog.INFO, 'Recording already exists in Myth Videos')
-            self.job.setComment("Action would result in duplicate entry, job ended" )
-            self.job.setStatus(Job.FINISHED)
+            if self.thisJob:
+                self.thisJob.setComment("Action would result in duplicate entry, job ended" )
+                self.thisJob.setStatus(Job.FINISHED)
             self.vid.delete()
             self.log(MythLog.GENERAL, MythLog.INFO, 'Exiting program')
             return True
@@ -140,11 +144,11 @@ class VIDEO:
             if self.rec.season is not 0 or self.rec.subtitle:
                 self.type = 'TV'
                 self.log(self.log.GENERAL, self.log.INFO,
-                        'Performing TV export.')
+                        'Performing TV type migration.')
             else:
                 self.type = 'MOVIE'
                 self.log(self.log.GENERAL, self.log.INFO,
-                        'Performing Movie export.')
+                        'Performing Movie type migration.')
 
     def process_fmt(self, fmt):
         # replace fields from viddata
@@ -182,58 +186,58 @@ class VIDEO:
         self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Copying myth://%s@%s/%s"\
                % (self.rec.storagegroup, self.rec.hostname, self.rec.basename)\
                                                     +" to myth://Videos@%s/%s"\
-                                          % (self.vid.host, self.vid.filename))
+                                          % (self.host, self.vid.filename))
         
  
         srcfp = self.rec.open('r')
         dstfp = self.vid.open('w')
 
-        if self.job:
-            self.job.setStatus(Job.RUNNING)
-            tsize = 2**24
-            while tsize == 2**24:
-                tsize = min(tsize, srcsize - dstfp.tell())
-                dstfp.write(srcfp.read(tsize))
-                htime.append(time.time())
-                rate = float(tsize*4)/(time.time()-htime.pop(0))
-                remt = (srcsize-dstfp.tell())/rate
-                if self.job:
-                    self.job.setComment("%02d%% complete - %d seconds remaining" %\
-                                          (dstfp.tell()*100/srcsize, remt))
-            srcfp.close()
-            dstfp.close()
-            
-            self.vid.hash = self.vid.getHash()
-            
-            self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Transfer Complete",
-            			      "%d seconds elapsed" % int(time.time()-stime))
-            
-            if self.opts.reallysafe:
-                if self.job:
-                    self.job.setComment("Checking file hashes")
-                self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Checking file hashes.")
-                srchash = hashfile(self.rec.open('r'))
-                dsthash = hashfile(self.rec.open('r'))
-                if srchash != dsthash:
-                    raise MythError('Source hash (%s) does not match destination hash (%s)' \
-                	      % (srchash, dsthash))
-            elif self.opts.safe:
-                self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Checking file sizes.")
-                be = MythBE(db=self.vid._db)
-                try:
-                    srcsize = be.getSGFile(self.rec.hostname, self.rec.storagegroup, \
-                			self.rec.basename)[1]
-                    dstsize = be.getSGFile(self.vid.host, 'Videos', self.vid.filename)[1]
-                except:
-                    raise MythError('Could not query file size from backend')
-                if srcsize != dstsize:
-                    raise MythError('Source size (%d) does not match destination size (%d)' \
-                            	      % (srcsize, dstsize))
-            
-            if self.job:
-                self.job.setComment("Complete - %d seconds elapsed" % \
-            	      (int(time.time()-stime)))
-                self.job.setStatus(Job.FINISHED)
+        if self.thisJob:
+            self.thisJob.setStatus(Job.RUNNING)
+        tsize = 2**24
+        while tsize == 2**24:
+            tsize = min(tsize, srcsize - dstfp.tell())
+            dstfp.write(srcfp.read(tsize))
+            htime.append(time.time())
+            rate = float(tsize*4)/(time.time()-htime.pop(0))
+            remt = (srcsize-dstfp.tell())/rate
+            if self.thisJob:
+                self.thisJob.setComment("%02d%% complete - %d seconds remaining" %\
+                                      (dstfp.tell()*100/srcsize, remt))
+        srcfp.close()
+        dstfp.close()
+        
+        self.vid.hash = self.vid.getHash()
+        
+        self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Transfer Complete",
+        			      "%d seconds elapsed" % int(time.time()-stime))
+        
+        if self.opts.reallysafe:
+            if self.thisJob:
+                self.thisJob.setComment("Checking file hashes")
+            self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Checking file hashes.")
+            srchash = hashfile(self.rec.open('r'))
+            dsthash = hashfile(self.vid.open('r'))
+            if srchash != dsthash:
+                raise MythError('Source hash (%s) does not match destination hash (%s)' \
+            	      % (srchash, dsthash))
+        elif self.opts.safe:
+            self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Checking file sizes.")
+            be = MythBE(db=self.vid._db)
+            try:
+                srcsize = be.getSGFile(self.rec.hostname, self.rec.storagegroup, \
+            			self.rec.basename)[1]
+                dstsize = be.getSGFile(self.host, 'Videos', self.vid.filename)[1]
+            except:
+                raise MythError('Could not query file size from backend')
+            if srcsize != dstsize:
+                raise MythError('Source size (%d) does not match destination size (%d)' \
+                        	      % (srcsize, dstsize))
+        
+        if self.thisJob:
+            self.thisJob.setComment("Complete - %d seconds elapsed" % \
+        	      (int(time.time()-stime)))
+            self.thisJob.setStatus(Job.FINISHED)
 
 
 
@@ -245,9 +249,13 @@ def main():
                     "These options can be used to manually specify a recording to operate on "+\
                     "in place of the job id.")
     sourcegroup.add_option("--chanid", action="store", type="int", dest="chanid",
-            help="Use chanid for manual operation")
-    sourcegroup.add_option("--starttime", action="store", type="int", dest="starttime",
-            help="Use starttime for manual operation")
+            help="Use chanid for manual operation, format interger")
+    sourcegroup.add_option("--startdate", action="store", type="string", dest="startdate",
+            help="Use startdate for manual operation, format is year-mm-dd")
+    sourcegroup.add_option("--starttime", action="store", type="string", dest="starttime",
+            help="Use starttime for manual operation, format is hh:mm:ss in UTC")
+    sourcegroup.add_option("--offset", action="store", type="string", dest="offset",
+            help="Use offset(timezone) for manual operation, format is [+/-]hh:mm. Do not adjust for DST")
     parser.add_option_group(sourcegroup)
 
     actiongroup = OptionGroup(parser, "Additional Actions",
@@ -283,33 +291,48 @@ def main():
     if opts.delete:
         opts.safe = True
 
-    if opts.chanid and opts.starttime:
+    # if a manual channel and time entry then setup the export with opts
+    if opts.chanid and opts.startdate and opts.starttime and opts.offset:
         export = VIDEO(opts)
+
+    # If an auto or manual job entry then setup the export with the jobID
     elif len(args) == 1:
         try:
             export = VIDEO(opts,int(args[0]))
-            export.get_type()
-            export.get_dest()
-            if (export.dup_check):
-                sys.exit(0)
-            else:
-                export.copy()
-            if opts.seekdata:
-                export.copy_seek()
-            if opts.skiplist:
-                export.copy_markup(static.MARKUP.MARK_COMM_START,
-                                 static.MARKUP.MARK_COMM_END)
-            if opts.cutlist:
-                export.copy_markup(static.MARKUP.MARK_CUT_START,
-                                 static.MARKUP.MARK_CUT_END)                
+               
         except Exception, e:
             Job(int(args[0])).update({'status':Job.ERRORED,
                                       'comment':'ERROR: '+e.args[0]})
             MythLog(module='mythvidexport.py').logTB(MythLog.GENERAL)
             sys.exit(1)
+
+    # else bomb the job and return an error code
     else:
         parser.print_help()
         sys.exit(2)
+
+    # Export object created so process the job
+    export.get_meta()
+    export.get_type()
+    export.get_dest()
+    if (export.dup_check()):
+        sys.exit(0)
+    else:
+        export.copy()
+    if opts.seekdata:
+        export.copy_seek()
+    if opts.skiplist:
+        export.copy_markup(static.MARKUP.MARK_COMM_START,
+                         static.MARKUP.MARK_COMM_END)
+    if opts.cutlist:
+        export.copy_markup(static.MARKUP.MARK_CUT_START,
+                         static.MARKUP.MARK_CUT_END)
+    export.vid.update()
+
+    # delete old file
+    if opts.delete:
+        export.rec.delete()
+
 
 if __name__ == "__main__":
     main()
