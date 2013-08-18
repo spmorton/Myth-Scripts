@@ -16,7 +16,7 @@
 
 __title__  = "Myth-Rec-to-Vid"
 __author__ = "Scott Morton"
-__version__= "v0.9"
+__version__= "v0.9.1"
 
 from MythTV import MythDB, Job, Recorded, Video, MythLog, MythError, static, MythBE
 from optparse import OptionParser, OptionGroup
