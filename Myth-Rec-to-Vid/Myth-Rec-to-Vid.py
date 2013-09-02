@@ -16,7 +16,7 @@
 
 __title__  = "Myth-Rec-to-Vid"
 __author__ = "Scott Morton"
-__version__= "v1.0"
+__version__= "v1.0.1"
 
 from MythTV import MythDB, Job, Recorded, MythLog ,Video, static, MythBE
 from optparse import OptionParser, OptionGroup
@@ -173,7 +173,7 @@ class VIDEO:
         self.log(self.log.GENERAL, self.log.INFO, 'MetaData Import complete')
 
     def get_type(self):
-        if self.rec.season is not 0 or self.rec.subtitle:
+        if self.rec.seriesid != None and self.rec.programid[:2] != 'MV':
             self.type = 'TV'
             self.log(self.log.GENERAL, self.log.INFO,
                     'Performing TV type migration.')
