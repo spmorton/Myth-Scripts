@@ -16,7 +16,7 @@
 
 __title__  = "Myth-Rec-to-Vid"
 __author__ = "Scott Morton"
-__version__= "v1.0.1"
+__version__= "v1.0.2"
 
 from MythTV import MythDB, Job, Recorded, MythLog ,Video, static, MythBE
 from optparse import OptionParser, OptionGroup
@@ -150,7 +150,7 @@ class VIDEO:
         if self.bend.fileExists(self.vid.filename, 'Videos'):
             self.log(MythLog.GENERAL, MythLog.INFO, 'Recording already exists in Myth Videos')
             if self.thisJob:
-                self.thisJob.setComment("Action would result in duplicate entry, job ended" )
+                self.thisJob.setComment("Action would result in duplicate entry" )
             return True
           
         else:
@@ -238,9 +238,12 @@ def main():
     parser.add_option_group(sourcegroup)
 
     actiongroup = OptionGroup(parser, "Additional Actions",
-                    "These options perform additional actions after the recording has been migrated.")
+                    "These options perform additional actions after the recording has been migrated. "+\
+                    "A safe copy is always performed in that the file is checked to match the "+\
+                    "MythBE hash. The safe copy option will abort the entire process if selected "+\
+                    "along with Other Data and an exception occurs in the process")
     actiongroup.add_option('--safe', action='store_true', default=False, dest='safe',
-            help='Perform quick sanity check of migrated file using file HASH.')
+            help='If other data is copied and a failure occurs this will abort the whole process.')
     actiongroup.add_option("--delete", action="store_true", default=False,
             help="Delete source recording after successful export. Enforces use of --safe.")
     parser.add_option_group(actiongroup)
@@ -259,6 +262,12 @@ def main():
 
     opts, args = parser.parse_args()
 
+    def error_out():
+        export.delete_vid()
+        if export.thisJob:        
+            export.set_job_status(Job.ERRORED)
+        sys.exit(1)
+        
     if opts.verbose:
         if opts.verbose == 'help':
             print MythLog.helptext
@@ -299,33 +308,69 @@ def main():
 
     if (export.dup_check()):
         export.delete_vid()
-        export.set_job_status(Job.FINISHED)
+        if export.thisJob:
+            export.set_job_status(Job.FINISHED)
         sys.exit(0)
 
     else:
-        export.copy()
-        export.vid.update()
-        export.set_vid_hash()
+        try:
+            export.copy()
+            export.vid.update()
+            export.set_vid_hash()
 
-    if opts.safe:
-        if not export.check_hash():
-            export.delete_vid()
-            export.set_job_status(Job.ERRORED)
-            sys.exit(1)
+        except Exception, e:
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing ",
+        			      "Message was: %s" % e.message)
+        try:
+            if not export.check_hash():
+                error_out()
+                
+        except Exception, e:
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Hash Check",
+        			      "Message was: %s" % e.message)
+            error_out()
 
     if opts.seekdata:
-        export.copy_seek()
+        try:
+            export.copy_seek()
+
+        except Exception, e:
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Seek Data",
+        			      "Message was: %s" % e.message)
+            if opts.safe:
+                error_out()
 
     if opts.skiplist:
-        export.copy_markup(static.MARKUP.MARK_COMM_START,
+        try:
+            export.copy_markup(static.MARKUP.MARK_COMM_START,
                          static.MARKUP.MARK_COMM_END)
+
+        except Exception, e:
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Skip List",
+        			      "Message was: %s" % e.message)
+            if opts.safe:
+                error_out()
+
     if opts.cutlist:
-        export.copy_markup(static.MARKUP.MARK_CUT_START,
+        try:
+            export.copy_markup(static.MARKUP.MARK_CUT_START,
                          static.MARKUP.MARK_CUT_END)
+        except Exception, e:
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Cut List",
+        			      "Message was: %s" % e.message)
+            if opts.safe:
+                error_out()
 
     # delete old file
     if opts.delete:
-        export.delete_rec()
+        try:
+            export.delete_rec()
+
+        except Exception, e:
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Delete Orig",
+        			      "Message was: %s" % e.message)
+            if opts.safe:
+                error_out()
     
     export.set_job_status(Job.FINISHED)
     
