@@ -1,0 +1,14 @@
+[Unit]
+Description=MythTV backend service
+After=network.target
+After=mysql.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/init.d/mythbackend
+User=root
+Group=video
+ExecStart=/usr/bin/mythbackend --user mythbackend --logpath /var/log/mythtv 
+
+[Install]
+WantedBy=multi-user.target
