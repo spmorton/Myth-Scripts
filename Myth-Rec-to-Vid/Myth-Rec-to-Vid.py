@@ -16,9 +16,10 @@
 
 __title__  = "Myth-Rec-to-Vid"
 __author__ = "Scott Morton"
-__version__= "v1.0.2"
+__version__= "v1.2"
 
-from MythTV import MythDB, Job, Recorded, MythLog ,Video, static, MythBE
+from MythTV import MythDB, Job, Recorded, Video, VideoGrabber,\
+                   MythLog, static, MythBE    
 from optparse import OptionParser, OptionGroup
 
 import sys, time
@@ -63,6 +64,7 @@ class VIDEO:
         self.type = "none"
         self.db = MythDB()
         self.log = MythLog(module='Myth-Rec-to-Vid.py', db=self.db)
+        
 
         # Capture the backend host name
         self.host = self.db.gethostname()
@@ -77,7 +79,8 @@ class VIDEO:
                                              'host':self.host})
 
         self.bend = MythBE(db=self.db)
-
+        
+        
     def check_hash(self):
         self.log(self.log.GENERAL, self.log.INFO,
                  'Performing copy validation.')
@@ -169,8 +172,31 @@ class VIDEO:
 
     def get_meta(self):
         metadata = self.rec.exportMetadata()
+        yrInfo = self.rec.getProgram()
+        metadata['year'] = yrInfo.get('year')
         self.vid.importMetadata(metadata)
-        self.log(self.log.GENERAL, self.log.INFO, 'MetaData Import complete')
+        if self.type == 'MOVIE':
+            grab = VideoGrabber('Movie')
+            results = grab.sortedSearch(self.rec.title)
+        else:
+            grab = VideoGrabber('TV')
+            results = grab.sortedSearch(self.rec.title, self.rec.subtitle)
+        if len(results) > 0:
+            for i in results:
+                if i.year == yrInfo.get('year') and i.title == self.rec.get('title'):
+                    self.vid.importMetadata(i)
+                    match = grab.grabInetref(i.get('inetref'))
+                    length = len(match.people)
+                    for p in range(length-2):
+                        self.vid.cast.add(match.people[p].get('name'))
+                    self.vid.director = match.people[length - 1].get('name')
+                    import_info = 'Full MetaData Import complete'
+        elif len(results) == 0:
+            import_info = 'Listing only MetaData import complete'
+        
+        self.vid.category = self.rec.get('category')
+
+        self.log(self.log.GENERAL, self.log.INFO, import_info)
 
     def get_type(self):
         if self.rec.seriesid != None and self.rec.programid[:2] != 'MV':
@@ -302,9 +328,15 @@ def main():
         sys.exit(2)
 
     # Export object created so process the job
-    export.get_meta()
-    export.get_type()
-    export.get_dest()
+    try:
+        export.get_type()
+        export.get_meta()
+        export.get_dest()
+
+    except Exception, e:
+        export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing ",
+    			      "Message was: %s" % e.message)
+        error_out()
 
     if (export.dup_check()):
         export.delete_vid()
@@ -321,6 +353,8 @@ def main():
         except Exception, e:
             export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing ",
         			      "Message was: %s" % e.message)
+            error_out()
+
         try:
             if not export.check_hash():
                 error_out()
