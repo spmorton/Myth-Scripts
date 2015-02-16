@@ -16,7 +16,7 @@
 
 __title__  = "Myth-Rec-to-Vid"
 __author__ = "Scott Morton"
-__version__= "v1.2"
+__version__= "v1.2.1"
 
 from MythTV import MythDB, Job, Recorded, Video, VideoGrabber,\
                    MythLog, static, MythBE    
@@ -178,21 +178,35 @@ class VIDEO:
         if self.type == 'MOVIE':
             grab = VideoGrabber('Movie')
             results = grab.sortedSearch(self.rec.title)
+            if len(results) > 0:
+                for i in results:
+                    if i.year == yrInfo.get('year') and i.title == self.rec.get('title'):
+                        self.vid.importMetadata(i)
+                        match = grab.grabInetref(i.get('inetref'))
+                        length = len(match.people)
+                        for p in range(length-2):
+                            self.vid.cast.add(match.people[p].get('name'))
+                        self.vid.director = match.people[length - 1].get('name')
+                        import_info = 'Full MetaData Import complete'
+            elif len(results) == 0:
+                import_info = 'Listing only MetaData import complete'
         else:
             grab = VideoGrabber('TV')
             results = grab.sortedSearch(self.rec.title, self.rec.subtitle)
-        if len(results) > 0:
-            for i in results:
-                if i.year == yrInfo.get('year') and i.title == self.rec.get('title'):
-                    self.vid.importMetadata(i)
-                    match = grab.grabInetref(i.get('inetref'))
-                    length = len(match.people)
-                    for p in range(length-2):
-                        self.vid.cast.add(match.people[p].get('name'))
-                    self.vid.director = match.people[length - 1].get('name')
-                    import_info = 'Full MetaData Import complete'
-        elif len(results) == 0:
-            import_info = 'Listing only MetaData import complete'
+            if len(results) > 0:
+                for i in results:
+                    if  i.title == self.rec.get('title') and i.subtitle == self.rec.get('subtitle'):
+                        self.vid.importMetadata(i)
+                        match = grab.grabInetref(grab.grabInetref(i.get('inetref'), \
+                                season=i.get('season'),episode=i.get('episode')))
+                        length = len(match.people)
+                        for p in range(length-2):
+                            self.vid.cast.add(match.people[p].get('name'))
+                        self.vid.director = match.people[length - 1].get('name')
+                        import_info = 'Full MetaData Import complete'
+            elif len(results) == 0:
+                import_info = 'Listing only MetaData import complete'
+            
         
         self.vid.category = self.rec.get('category')
 
