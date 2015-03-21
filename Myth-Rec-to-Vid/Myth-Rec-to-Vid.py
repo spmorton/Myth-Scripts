@@ -171,6 +171,7 @@ class VIDEO:
         self.vid.markup._refdat = (self.vid.filename,)
 
     def get_meta(self):
+        import_info = 'Listing only MetaData import complete'
         metadata = self.rec.exportMetadata()
         yrInfo = self.rec.getProgram()
         metadata['year'] = yrInfo.get('year')
@@ -188,8 +189,6 @@ class VIDEO:
                             self.vid.cast.add(match.people[p].get('name'))
                         self.vid.director = match.people[length - 1].get('name')
                         import_info = 'Full MetaData Import complete'
-            elif len(results) == 0:
-                import_info = 'Listing only MetaData import complete'
         else:
             grab = VideoGrabber('TV')
             results = grab.sortedSearch(self.rec.title, self.rec.subtitle)
@@ -204,8 +203,6 @@ class VIDEO:
                             self.vid.cast.add(match.people[p].get('name'))
                         self.vid.director = match.people[length - 1].get('name')
                         import_info = 'Full MetaData Import complete'
-            elif len(results) == 0:
-                import_info = 'Listing only MetaData import complete'
             
         
         self.vid.category = self.rec.get('category')
