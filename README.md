@@ -8,3 +8,4 @@ The following allows for the use of the native mythbackend.service file with sys
   Then issue the command 'touch /etc/init.d/mythbackend'
   Restart the backend service.
 ```
+Myth-Rec-2-Vid 2.0.2 is not ready for primtime
