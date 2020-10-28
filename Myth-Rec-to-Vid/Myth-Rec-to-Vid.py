@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: UTF-8 -*-
+
 #---------------------------
 #   Name: Myth-Rec-to-Vid.py
 #   Python Script
@@ -16,7 +16,7 @@
 
 __title__  = "Myth-Rec-to-Vid"
 __author__ = "Scott Morton"
-__version__= "v1.2.1"
+__version__= "v1.2.2"
 
 from MythTV import MythDB, Job, Recorded, Video, VideoGrabber,\
                    MythLog, static, MythBE    
@@ -29,7 +29,7 @@ import sys, time
 # Modify these setting to your prefered defaults
 TVFMT = 'Television/%TITLE%/Season %SEASON%/'+\
                     '%TITLE% - S%SEASON%E%EPISODEPAD% - %SUBTITLE%'
-
+      
 MVFMT = 'Movies/%TITLE%'
 
 # Available strings:
@@ -44,6 +44,9 @@ MVFMT = 'Movies/%TITLE%'
 #    %HOSTNAME%:      backend used to record show
 #    %STORAGEGROUP%:  storage group containing recorded show
 #    %GENRE%:         first genre listed for recording
+
+
+
 
 class VIDEO:
     def __init__(self, opts, jobid=None):                           
@@ -64,7 +67,11 @@ class VIDEO:
         self.type = "none"
         self.db = MythDB()
         self.log = MythLog(module='Myth-Rec-to-Vid.py', db=self.db)
-        
+        self.log(MythLog.GENERAL, MythLog.INFO, 'Recorording info', 
+                        'JobID -  %d, ChanID - %d, StartTime - %s' % (jobid,
+                                     self.chanID, 
+                                     self.startTime))
+
 
         # Capture the backend host name
         self.host = self.db.gethostname()
@@ -75,7 +82,7 @@ class VIDEO:
                         '%s - %s' % (self.rec.title.encode('utf-8'), 
                                      self.rec.subtitle.encode('utf-8')))
 
-        self.vid = Video(db=self.db).create({'title':'', 'filename':'',
+        self.vid = Video(db=self.db).create({'title':u'', 'filename':u'',
                                              'host':self.host})
 
         self.bend = MythBE(db=self.db)
@@ -172,16 +179,34 @@ class VIDEO:
 
     def get_meta(self):
         import_info = 'Listing only MetaData import complete'
-        metadata = self.rec.exportMetadata()
-        yrInfo = self.rec.getProgram()
-        metadata['year'] = yrInfo.get('year')
-        self.vid.importMetadata(metadata)
+        #metadata = self.rec.exportMetadata()
+        #yrInfo = self.rec.getProgram()
+        #metadata['year'] = yrInfo.get('year')
+        
+     #   try:
+        self.vid.importMetadata(self.rec.exportMetadata())
+        self.vid.year = self.rec.getProgram().year
+        
+    #    except Exception, e:
+   #         print e
+  #          self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in grab", \
+ #   			      "Message was: %s" % e.message % "\n")
+#            raise e
+        
         if self.type == 'MOVIE':
             grab = VideoGrabber('Movie')
-            results = grab.sortedSearch(self.rec.title)
+            try:
+                results = grab.sortedSearch(self.rec.title)
+                
+            except Exception, e:
+                print e
+                self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in MOVIE grab", \
+        			      "Message was: %s" % e.message)
+                print "error in grab" 
+
             if len(results) > 0:
                 for i in results:
-                    if i.year == yrInfo.get('year') and i.title == self.rec.get('title'):
+                    if i.year == self.rec.getProgram().year and i.title == self.rec.get('title'):
                         self.vid.importMetadata(i)
                         match = grab.grabInetref(i.get('inetref'))
                         length = len(match.people)
@@ -190,8 +215,15 @@ class VIDEO:
                         self.vid.director = match.people[length - 1].get('name')
                         import_info = 'Full MetaData Import complete'
         else:
-            grab = VideoGrabber('TV')
-            results = grab.sortedSearch(self.rec.title, self.rec.subtitle)
+            try:
+                grab = VideoGrabber('TV')
+                results = grab.sortedSearch(self.rec.title, self.rec.subtitle)
+            except Exception, e:
+                print e
+                self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in TV grab", \
+        			      "Message was: %s" % e)
+                print "error in grab" 
+
             if len(results) > 0:
                 for i in results:
                     if  i.title == self.rec.get('title') and i.subtitle == self.rec.get('subtitle'):
@@ -221,7 +253,7 @@ class VIDEO:
 
     def process_fmt(self, fmt):
         # replace fields from viddata
-
+        # print self.vid.items()        
         ext = '.'+self.rec.basename.rsplit('.',1)[1]
         rep = ( ('%TITLE%','title','%s'),   ('%SUBTITLE%','subtitle','%s'),
             ('%SEASON%','season','%d'),     ('%SEASONPAD%','season','%02d'),
@@ -283,6 +315,8 @@ def main():
             help='If other data is copied and a failure occurs this will abort the whole process.')
     actiongroup.add_option("--delete", action="store_true", default=False,
             help="Delete source recording after successful export. Enforces use of --safe.")
+    actiongroup.add_option("--deleteanyway", action="store_true", default=False,
+            help="Delete source recording if duplicate destination exists.")
     parser.add_option_group(actiongroup)
 
     othergroup = OptionGroup(parser, "Other Data",
@@ -328,8 +362,9 @@ def main():
             export = VIDEO(opts,int(args[0]))
 
         except Exception, e:
+            print e
             Job(int(args[0])).update({'status':Job.ERRORED,
-                                      'comment':'ERROR: '+e.args[0]})
+                                      'comment':'ERROR: ' + e})
             MythLog(module='Myth-Rec-to-Vid.py').logTB(MythLog.GENERAL)
             sys.exit(1)
 
@@ -345,11 +380,13 @@ def main():
         export.get_dest()
 
     except Exception, e:
-        export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing ",
+        export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing 'gets'",
     			      "Message was: %s" % e.message)
         error_out()
 
     if (export.dup_check()):
+        if(opts.deleteanyway):
+            export.delete_rec()
         export.delete_vid()
         if export.thisJob:
             export.set_job_status(Job.FINISHED)
@@ -358,13 +395,17 @@ def main():
     else:
         try:
             export.copy()
-            export.vid.update()
+            print 'copy finished'
+            export.update_vid()
+            print 'update finished'
             export.set_vid_hash()
+            print 'hash finished'
 
         except Exception, e:
-            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing ",
-        			      "Message was: %s" % e.message)
-            error_out()
+            print e
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing 'exports'",
+        			      "Message was: %s" % e)
+            #error_out()
 
         try:
             if not export.check_hash():
@@ -380,7 +421,7 @@ def main():
             export.copy_seek()
 
         except Exception, e:
-            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Seek Data",
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Seek Data", \
         			      "Message was: %s" % e.message)
             if opts.safe:
                 error_out()
@@ -391,7 +432,7 @@ def main():
                          static.MARKUP.MARK_COMM_END)
 
         except Exception, e:
-            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Skip List",
+            export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Skip List", \
         			      "Message was: %s" % e.message)
             if opts.safe:
                 error_out()
