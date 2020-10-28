@@ -42,6 +42,9 @@ from optparse import OptionParser, OptionGroup
 import sys, os, time
 from datetime import datetime
 
+print "NOT READY"
+sys.exit(-1)
+
 # Global Constants
 
 # Modify these setting to your prefered defaults
