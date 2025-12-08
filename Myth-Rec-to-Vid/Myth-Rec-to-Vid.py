@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
 #---------------------------
 #   Name: Myth-Rec-to-Vid.py
 #   Python Script
@@ -16,7 +15,7 @@
 
 __title__  = "Myth-Rec-to-Vid"
 __author__ = "Scott Morton"
-__version__= "v1.2.2"
+__version__= "v2.2.2"
 
 from MythTV import MythDB, Job, Recorded, Video, VideoGrabber,\
                    MythLog, static, MythBE    
@@ -198,11 +197,11 @@ class VIDEO:
             try:
                 results = grab.sortedSearch(self.rec.title)
                 
-            except Exception, e:
-                print e
+            except Exception as e:
+                print (e)
                 self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in MOVIE grab", \
         			      "Message was: %s" % e.message)
-                print "error in grab" 
+                print ("error in grab") 
 
             if len(results) > 0:
                 for i in results:
@@ -218,11 +217,11 @@ class VIDEO:
             try:
                 grab = VideoGrabber('TV')
                 results = grab.sortedSearch(self.rec.title, self.rec.subtitle)
-            except Exception, e:
-                print e
+            except Exception as e:
+                print (e)
                 self.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in TV grab", \
         			      "Message was: %s" % e)
-                print "error in grab" 
+                print ("error in grab") 
 
             if len(results) > 0:
                 for i in results:
@@ -242,14 +241,14 @@ class VIDEO:
         self.log(self.log.GENERAL, self.log.INFO, import_info)
 
     def get_type(self):
-        if self.rec.seriesid != None and self.rec.programid[:2] != 'MV':
-            self.type = 'TV'
+        if self.rec.programid[:2] == 'MV':
+            self.type = 'MOVIE'
             self.log(self.log.GENERAL, self.log.INFO,
-                    'Performing TV type migration.')
+                    'Performing MOVIE type migration.')
         else:
             self.type = 'MOVIE'
             self.log(self.log.GENERAL, self.log.INFO,
-                    'Performing Movie type migration.')
+                    'Performing TV type migration.')
 
     def process_fmt(self, fmt):
         # replace fields from viddata
@@ -341,7 +340,7 @@ def main():
         
     if opts.verbose:
         if opts.verbose == 'help':
-            print MythLog.helptext
+            print (MythLog.helptext)
             sys.exit(0)
         MythLog._setlevel(opts.verbose)
 
@@ -353,7 +352,7 @@ def main():
         try:
             export = VIDEO(opts)
 
-        except Exception, e:
+        except Exception as e:
             sys.exit(1)
 
     # If an auto or manual job entry then setup the export with the jobID
@@ -361,8 +360,8 @@ def main():
         try:
             export = VIDEO(opts,int(args[0]))
 
-        except Exception, e:
-            print e
+        except Exception as e:
+            print (e)
             Job(int(args[0])).update({'status':Job.ERRORED,
                                       'comment':'ERROR: ' + e})
             MythLog(module='Myth-Rec-to-Vid.py').logTB(MythLog.GENERAL)
@@ -379,7 +378,7 @@ def main():
         export.get_meta()
         export.get_dest()
 
-    except Exception, e:
+    except Exception as e:
         export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing 'gets'",
     			      "Message was: %s" % e.message)
         error_out()
@@ -395,14 +394,14 @@ def main():
     else:
         try:
             export.copy()
-            print 'copy finished'
+            print ('copy finished')
             export.update_vid()
-            print 'update finished'
+            print ('update finished')
             export.set_vid_hash()
-            print 'hash finished'
+            print ('hash finished')
 
-        except Exception, e:
-            print e
+        except Exception as e:
+            print (e)
             export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Processing 'exports'",
         			      "Message was: %s" % e)
             #error_out()
@@ -411,7 +410,7 @@ def main():
             if not export.check_hash():
                 error_out()
                 
-        except Exception, e:
+        except Exception as e:
             export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Hash Check",
         			      "Message was: %s" % e.message)
             error_out()
@@ -420,7 +419,7 @@ def main():
         try:
             export.copy_seek()
 
-        except Exception, e:
+        except Exception as e:
             export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Seek Data", \
         			      "Message was: %s" % e.message)
             if opts.safe:
@@ -431,7 +430,7 @@ def main():
             export.copy_markup(static.MARKUP.MARK_COMM_START,
                          static.MARKUP.MARK_COMM_END)
 
-        except Exception, e:
+        except Exception as e:
             export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Skip List", \
         			      "Message was: %s" % e.message)
             if opts.safe:
@@ -441,7 +440,7 @@ def main():
         try:
             export.copy_markup(static.MARKUP.MARK_CUT_START,
                          static.MARKUP.MARK_CUT_END)
-        except Exception, e:
+        except Exception as e:
             export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Cut List",
         			      "Message was: %s" % e.message)
             if opts.safe:
@@ -452,7 +451,7 @@ def main():
         try:
             export.delete_rec()
 
-        except Exception, e:
+        except Exception as e:
             export.log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Delete Orig",
         			      "Message was: %s" % e.message)
             if opts.safe:
