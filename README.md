@@ -1,6 +1,8 @@
 # Myth-Scripts
 Collection of personal scripts and information for MythTV
 
+I changed over to Debian some time ago, the below is kept for posterity.
+
 ## Mythbackend.service on OpenSuse Leap
 The following allows for the use of the native mythbackend.service file with systemd
 ```
