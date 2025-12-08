@@ -242,7 +242,7 @@ class VIDEO:
             self.log(self.log.GENERAL, self.log.INFO,
                     'Performing MOVIE type migration.')
         else:
-            self.type = 'MOVIE'
+            self.type = 'TV'
             self.log(self.log.GENERAL, self.log.INFO,
                     'Performing TV type migration.')
 
