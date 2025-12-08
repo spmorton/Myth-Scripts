@@ -3,7 +3,7 @@
 
 """
     Myth-Rec-to-Vid-v3.py
-    Copyright (C) 2020  Scott P. Morton 
+    Copyright (C) 2020  Scott P. Morton PhD
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #---------------------------
 #   Name: Myth-Rec-to-Vidv3.py
 #   Python Script
-#   Author: Scott Morton
+#   Author: Scott Morton PhD
 # 
 #   For use with Myth 30+
 
@@ -37,7 +37,7 @@
 
 
 __title__  = "Myth-Rec-to-Vid"
-__author__ = "Scott P. Morton"
+__author__ = "Scott P. Morton PhD"
 __version__= "v3.0.1"
 
 from MythTV import MythDB, Job, Recorded, Video, VideoGrabber,\
