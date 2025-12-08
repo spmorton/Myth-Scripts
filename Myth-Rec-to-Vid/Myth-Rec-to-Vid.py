@@ -4,10 +4,6 @@
 #   Python Script
 #   Author: Scott Morton
 # 
-#   This is a rewrite of a script by Raymond Wagner
-#   The objective is to clean it up and streamline 
-#   the code for use with Myth 26
-
 
 #   Migrates MythTV Recordings to MythVideo in Version .26.
 #---------------------------
