@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 """
     Myth-Rec-to-Vid-v3.py
-    Copyright (C) 2020  Scott P. Morton PhD
+    Copyright (C) 2025  Scott P. Morton PhD
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #   Python Script
 #   Author: Scott Morton PhD
 # 
-#   For use with Myth 30+
+#   For use with Myth 34+
 
 
 #   Migrates MythTV Recordings to MythVideo.
@@ -36,9 +36,9 @@
 # so this should be easier to follow and adjust as desired
 
 
-__title__  = "Myth-Rec-to-Vid"
+__title__  = "Myth-Rec-to-Vid-v3"
 __author__ = "Scott P. Morton PhD"
-__version__= "v3.0.1"
+__version__= "v3.1.2"
 
 from MythTV import MythDB, Job, Recorded, Video, VideoGrabber,\
                    MythLog, static, MythBE    
@@ -69,6 +69,7 @@ MVFMT = 'Movies/%TITLE%'
 #    %GENRE%:         first genre listed for recording
 
 # an exit path
+
 def error_out(vid, thisJob):
     vid.delete()
     if thisJob:
@@ -82,19 +83,19 @@ def getType(rec):
         return 'TV'
 
 def dup_check(vid, rec, thisJob, bend, log):
-    log(MythLog.GENERAL, MythLog.INFO, 'Processing new file name ',
+    log(log.GENERAL, log.INFO, 'Processing new file name ',
                 '%s' % (vid['filename']))
-    log(MythLog.GENERAL, MythLog.INFO, 'Checking for duplication of ',
+    log(log.GENERAL, log.INFO, 'Checking for duplication of ',
                 '%s - %s' % (rec['title'].encode('utf-8'), 
                              rec['subtitle'].encode('utf-8')))
     if bend.fileExists(vid['filename'], 'Videos'):
-        log(MythLog.GENERAL, MythLog.INFO, 'Recording already exists in Myth Videos')
+        log(log.GENERAL, log.INFO, 'Recording already exists in Myth Videos')
         if thisJob:
             thisJob.setComment("Action would result in duplicate entry" )
         return True
       
     else:
-        log(MythLog.GENERAL, MythLog.INFO, 'No duplication found for ',
+        log(log.GENERAL, log.INFO, 'No duplication found for ',
                 '%s - %s' % (rec['title'].encode('utf-8'), 
                              rec['subtitle'].encode('utf-8')))
         return False 
@@ -124,7 +125,7 @@ def copy(vid, rec, thisJob, log):
     
     vid.hash = vid.getHash()
     
-    log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Transfer Complete",
+    log(log.GENERAL|log.FILE, log.INFO, "Transfer Complete",
     			      "%d seconds elapsed" % int(time.time()-stime))
 
     if thisJob:
@@ -144,14 +145,13 @@ def check_hash(vid, rec, bend):
     else:
         return True
 
-
 def main():
     jobid = 'MANUAL'
     chanID = ''
     startTime = ''
-    thisModule = 'Myth-Rec-to-Vid-v3.py'
     db = MythDB()
     # host = db.dbconfig.hostname
+    thisModule = 'Myth-Rec-to-Vid-v3.py'
     host = db.gethostname()
     bend = MythBE(db=db)
 
@@ -197,18 +197,19 @@ def main():
 
     try:
         log = MythLog(module=thisModule, db=db)
-        log._setfile('{0}/{1}.{2}.{3}.log'.format(opts.logpath,
-                     thisModule,
-                     datetime.now().strftime('%Y%m%d%H%M%S'),
-                     os.getpid()))
+        if opts.logpath:
+            log._setfile('{0}/{1}.{2}.{3}.log'.format(opts.logpath,
+                                    thisModule,
+                                    datetime.now().strftime('%Y%m%d%H%M%S'),
+                                    os.getpid()))
     except Exception as e:
-        MythLog(module=thisModule).logTB(MythLog.GENERAL)
+        log.logTB(log.GENERAL)
 
     if opts.verbose:
         if opts.verbose == 'help':
-            print (MythLog.helptext)
+            print (log.helptext)
             sys.exit(0)
-        MythLog._setlevel(opts.verbose)
+        log._setlevel(opts.verbose)
 
     if opts.delete:
         opts.safe = True
@@ -220,14 +221,13 @@ def main():
             startTime = opts.startdate + " " + opts.starttime + opts.offset
 
         except Exception as e:
-            MythLog(module=thisModule).logTB(MythLog.GENERALMythLog.INFO, "ERROR Processing fileName",
+            log.logTB("ERROR Processing fileName",
     			      "Message was: {0}".format(e.message))
             sys.exit(1)
 
     # If an auto or manual job entry then setup the export with the jobID
     elif len(args) >= 1:
         try:
-            print ('got to here\n')
             jobid = int(args[0])
             thisJob = Job(jobid)
             chanID = thisJob['chanid']
@@ -237,7 +237,7 @@ def main():
         except Exception as e:
             Job(jobid).update({'status':Job.ERRORED,
                                       'comment':'ERROR: ' + e})
-            MythLog(module=thisModule).logTB(MythLog.GENERALMythLog.INFO, "ERROR Processing fileName",
+            log.logTB(log.GENERAL, log.INFO, "ERROR Processing fileName",
     			      "Message was: {0}".format(e.message))
             sys.exit(0)
 
@@ -246,14 +246,14 @@ def main():
         parser.print_help()
         sys.exit(0)
 
-    log(MythLog.GENERAL, MythLog.INFO, 'Recorording info', 
+    log(log.GENERAL, log.INFO, 'Recorording info', 
                     'JobID -  %d, ChanID - %d, StartTime - %s' % (jobid,
                                  chanID, 
                                  startTime))
 
     # get the desired recording from Myth as an 'Object' and log it
     rec = Recorded((chanID,startTime), db=db)
-    log(MythLog.GENERAL, MythLog.INFO, 'Using recording',
+    log(log.GENERAL, log.INFO, 'Using recording',
                     '%s - %s' % (rec['title'].encode('utf-8'), 
                                  rec['subtitle'].encode('utf-8')))
 
@@ -282,12 +282,13 @@ def main():
                     ext)
         else:
             # as in 'Movies/%TITLE%'
-            fileName = 'Movies/{0}'.format(rec['title'])
+            fileName = 'Movies/{0}.{1}'.format(rec['title'].encode('utf-8'),
+                                               ext)
         # set the file name in the video object    
         vid['filename'] = fileName
     
     except Exception as e:
-        log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR Processing fileName",
+        log(log.GENERAL|log.FILE, log.INFO, "ERROR Processing fileName",
     			      "Message was: {0}".format(e.message))
         error_out(vid, thisJob)
 
@@ -300,7 +301,7 @@ def main():
 
     else:
         try:
-            log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "Copying myth://%s@%s/%s"\
+            log(log.GENERAL|log.FILE, MythLog.INFO, "Copying myth://%s@%s/%s"\
                 % (rec['storagegroup'], rec['hostname'], rec['basename'])\
                                                 +" to myth://Videos@%s/%s"\
                                       % (host, vid['filename']))
@@ -314,13 +315,13 @@ def main():
             vid.update()
 
         except Exception as e:
-            log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR during copy",
+            log(log.GENERAL|log.FILE, log.INFO, "ERROR during copy",
         			      "Message was: %s" % e)
             error_out(vid, thisJob)
 
         log(log.GENERAL, log.INFO,'Performing copy validation.')
         if not check_hash(vid, rec, bend):
-            log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Hash Check")
+            log(log.GENERAL|log.FILE, log.INFO, "ERROR in Hash Check")
             error_out(vid, thisJob)
 
     # this stuff still makes sense keep
@@ -330,7 +331,7 @@ def main():
                 vid.markup.add(seek.mark, seek.offset, seek.type)
 
         except Exception as e:
-            log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Seek Data", \
+            log(log.GENERAL|log.FILE, log.INFO, "ERROR in Seek Data", \
         			      "Message was: %s" % e.message)
             error_out(vid, thisJob)
 
@@ -341,7 +342,7 @@ def main():
                         static.MARKUP.MARK_COMM_END)
 
         except Exception as e:
-            log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Skip List", \
+            log(log.GENERAL|log.FILE, log.INFO, "ERROR in Skip List", \
         			      "Message was: %s" % e.message)
             error_out(vid, thisJob)
 
@@ -351,7 +352,7 @@ def main():
                         static.MARKUP.MARK_CUT_START,
                         static.MARKUP.MARK_CUT_END)
         except Exception as e:
-            log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Cut List",
+            log(log.GENERAL|log.FILE, log.INFO, "ERROR in Cut List",
         			      "Message was: %s" % e.message)
             error_out(vid, thisJob)
 
@@ -361,7 +362,7 @@ def main():
             rec.delete()
 
         except Exception as e:
-            log(MythLog.GENERAL|MythLog.FILE, MythLog.INFO, "ERROR in Delete Orig",
+            log(log.GENERAL|log.FILE, log.INFO, "ERROR in Delete Orig",
         			      "Message was: %s" % e.message)
             error_out(vid, thisJob)
     # duh
