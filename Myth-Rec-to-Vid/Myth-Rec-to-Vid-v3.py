@@ -273,16 +273,16 @@ def main():
             # as in 'Television/%TITLE%/Season %SEASON%/'+\
             #            '%TITLE% - S%SEASON%E%EPISODEPAD% - %SUBTITLE%'
             fileName = 'Television/{0}/Season {1}/{2} - S{3}E{4} - {5}.{6}'.format(
-                    rec['title'].encode('utf-8'),
+                    rec['title'],
                     rec['season'],
-                    rec['title'].encode('utf-8'),
+                    rec['title'],
                     rec['season'],
                     rec['episode'],
-                    rec['subtitle'].encode('utf-8'),
+                    rec['subtitle'],
                     ext)
         else:
             # as in 'Movies/%TITLE%'
-            fileName = 'Movies/{0}.{1}'.format(rec['title'].encode('utf-8'),
+            fileName = 'Movies/{0}.{1}'.format(rec['title'],
                                                ext)
         # set the file name in the video object    
         vid['filename'] = fileName
