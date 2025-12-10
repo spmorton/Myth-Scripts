@@ -38,7 +38,7 @@
 
 __title__  = "Myth-Rec-to-Vid-v3"
 __author__ = "Scott P. Morton PhD"
-__version__= "v3.1.2"
+__version__= "v3.1.3"
 
 from MythTV import MythDB, Job, Recorded, Video, VideoGrabber,\
                    MythLog, static, MythBE    
@@ -84,10 +84,10 @@ def getType(rec):
 
 def dup_check(vid, rec, thisJob, bend, log):
     log(log.GENERAL, log.INFO, 'Processing new file name ',
-                '%s' % (vid['filename']))
+                '{0}'.format(vid['filename']))
     log(log.GENERAL, log.INFO, 'Checking for duplication of ',
-                '%s - %s' % (rec['title'].encode('utf-8'), 
-                             rec['subtitle'].encode('utf-8')))
+                '{0} - {1}'.format(rec['title'], 
+                             rec['subtitle']))
     if bend.fileExists(vid['filename'], 'Videos'):
         log(log.GENERAL, log.INFO, 'Recording already exists in Myth Videos')
         if thisJob:
@@ -96,8 +96,8 @@ def dup_check(vid, rec, thisJob, bend, log):
       
     else:
         log(log.GENERAL, log.INFO, 'No duplication found for ',
-                '%s - %s' % (rec['title'].encode('utf-8'), 
-                             rec['subtitle'].encode('utf-8')))
+                '{0} - {1}'.format(rec['title'], 
+                             rec['subtitle']))
         return False 
 
 def copy(vid, rec, thisJob, log):
@@ -118,7 +118,7 @@ def copy(vid, rec, thisJob, log):
         rate = float(tsize*4)/(time.time()-htime.pop(0))
         remt = (srcsize-dstfp.tell())/rate
         if thisJob:
-            thisJob.setComment("%02d%% complete - %d seconds remaining" %\
+            thisJob.setComment("%{:.2%}% complete - {} seconds remaining".format\
                                   (dstfp.tell()*100/srcsize, remt))
     srcfp.close()
     dstfp.close()
@@ -126,11 +126,11 @@ def copy(vid, rec, thisJob, log):
     vid.hash = vid.getHash()
     
     log(log.GENERAL|log.FILE, log.INFO, "Transfer Complete",
-    			      "%d seconds elapsed" % int(time.time()-stime))
+    			      "{} seconds elapsed".format(int(time.time()-stime)))
 
     if thisJob:
-        thisJob.setComment("Complete - %d seconds elapsed" % \
-    	      (int(time.time()-stime)))
+        thisJob.setComment("Complete - {} seconds elapsed".
+                           format(int(time.time()-stime)))
 
 def copy_markup(vid, rec, start, stop):
     for mark in rec.markup:
@@ -247,15 +247,15 @@ def main():
         sys.exit(0)
 
     log(log.GENERAL, log.INFO, 'Recorording info', 
-                    'JobID -  %d, ChanID - %d, StartTime - %s' % (jobid,
+                    'JobID -  {}, ChanID - {}, StartTime - {}'.format(jobid,
                                  chanID, 
                                  startTime))
 
     # get the desired recording from Myth as an 'Object' and log it
     rec = Recorded((chanID,startTime), db=db)
     log(log.GENERAL, log.INFO, 'Using recording',
-                    '%s - %s' % (rec['title'].encode('utf-8'), 
-                                 rec['subtitle'].encode('utf-8')))
+                    '{} - {}'.format(rec['title'], 
+                                 rec['subtitle']))
 
     # get a blank video object from myth
     vid = Video(db=db).create({'title':u'', 'filename':u'',
@@ -264,7 +264,7 @@ def main():
     # determien the time of recording
     thisType = getType(rec)
     log(log.GENERAL, log.INFO,
-        'Attempting %s type migration.' % (thisType))
+        'Attempting {} type migration.'.format(thisType))
 
     try:
         # create a file name without a lot of BS
@@ -280,10 +280,12 @@ def main():
                     rec['episode'],
                     rec['subtitle'],
                     ext)
+            vid['contenttype'] = 'TELEVISION'
         else:
             # as in 'Movies/%TITLE%'
             fileName = 'Movies/{0}.{1}'.format(rec['title'],
                                                ext)
+            vid['contenttype'] = 'MOVIE'
         # set the file name in the video object    
         vid['filename'] = fileName
     
@@ -301,10 +303,10 @@ def main():
 
     else:
         try:
-            log(log.GENERAL|log.FILE, MythLog.INFO, "Copying myth://%s@%s/%s"\
-                % (rec['storagegroup'], rec['hostname'], rec['basename'])\
-                                                +" to myth://Videos@%s/%s"\
-                                      % (host, vid['filename']))
+            log(log.GENERAL|log.FILE, MythLog.INFO, "Copying myth://{}@{}/{}"
+                .format(rec['storagegroup'], rec['hostname'], rec['basename'])
+                                                +" to myth://Videos@{}/{}"
+                                                .format(host, vid['filename']))
 
             # I certainly hope the grabber is working and I do not need to
             # grab it again. If you have issues or missing data
@@ -316,7 +318,7 @@ def main():
 
         except Exception as e:
             log(log.GENERAL|log.FILE, log.INFO, "ERROR during copy",
-        			      "Message was: %s" % e)
+        			      "Message was: {}".format(e))
             error_out(vid, thisJob)
 
         log(log.GENERAL, log.INFO,'Performing copy validation.')
@@ -332,7 +334,7 @@ def main():
 
         except Exception as e:
             log(log.GENERAL|log.FILE, log.INFO, "ERROR in Seek Data", \
-        			      "Message was: %s" % e.message)
+        			      "Message was: {}".format(e.message))
             error_out(vid, thisJob)
 
     if opts.skiplist:
@@ -343,7 +345,7 @@ def main():
 
         except Exception as e:
             log(log.GENERAL|log.FILE, log.INFO, "ERROR in Skip List", \
-        			      "Message was: %s" % e.message)
+        			      "Message was: {}".format(e.message))
             error_out(vid, thisJob)
 
     if opts.cutlist:
@@ -353,7 +355,7 @@ def main():
                         static.MARKUP.MARK_CUT_END)
         except Exception as e:
             log(log.GENERAL|log.FILE, log.INFO, "ERROR in Cut List",
-        			      "Message was: %s" % e.message)
+        			      "Message was: {}".format(e.message))
             error_out(vid, thisJob)
 
     # delete old file if that option is set
@@ -363,7 +365,7 @@ def main():
 
         except Exception as e:
             log(log.GENERAL|log.FILE, log.INFO, "ERROR in Delete Orig",
-        			      "Message was: %s" % e.message)
+        			      "Message was: {}".format(e.message))
             error_out(vid, thisJob)
     # duh
     thisJob.setStatus(Job.FINISHED)
